@@ -16,7 +16,7 @@ Technological innovation is the driving force behind the advancement of the bloc
 ## Consensus Mechanism
 DPoS consensus mechanism: it has the characteristics of low transaction cost, low transaction delay, and high transaction concurrency.
 
-The maximum number of validators supported is 21.
+The maximum number of validators supported is 500.
 
 ## Economic Model 
 The endogenous token on the chain is LATEST; the transactions consume LATEST as gas fee.
