@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 // Package bind generates Ethereum contract Go bindings.
 //
@@ -42,6 +43,43 @@ const (
 	LangJava
 	LangObjC
 )
+
+func isKeyWord(arg string) bool {
+	switch arg {
+	case "break":
+	case "case":
+	case "chan":
+	case "const":
+	case "continue":
+	case "default":
+	case "defer":
+	case "else":
+	case "fallthrough":
+	case "for":
+	case "func":
+	case "go":
+	case "goto":
+	case "if":
+	case "import":
+	case "interface":
+	case "iota":
+	case "map":
+	case "make":
+	case "new":
+	case "package":
+	case "range":
+	case "return":
+	case "select":
+	case "struct":
+	case "switch":
+	case "type":
+	case "var":
+	default:
+		return false
+	}
+
+	return true
+}
 
 // Bind generates a Go wrapper around a contract ABI. This wrapper isn't meant
 // to be used as is in client code, but rather as an intermediate struct which
@@ -105,7 +143,7 @@ func Bind(types []string, abis []string, bytecodes []string, fsigs []map[string]
 			normalized.Inputs = make([]abi.Argument, len(original.Inputs))
 			copy(normalized.Inputs, original.Inputs)
 			for j, input := range normalized.Inputs {
-				if input.Name == "" {
+				if input.Name == "" || isKeyWord(input.Name) {
 					normalized.Inputs[j].Name = fmt.Sprintf("arg%d", j)
 				}
 				if hasStruct(input.Type) {
@@ -148,7 +186,7 @@ func Bind(types []string, abis []string, bytecodes []string, fsigs []map[string]
 			normalized.Inputs = make([]abi.Argument, len(original.Inputs))
 			copy(normalized.Inputs, original.Inputs)
 			for j, input := range normalized.Inputs {
-				if input.Name == "" {
+				if input.Name == "" || isKeyWord(input.Name) {
 					normalized.Inputs[j].Name = fmt.Sprintf("arg%d", j)
 				}
 				if hasStruct(input.Type) {

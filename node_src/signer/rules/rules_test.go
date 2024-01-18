@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package rules
 
@@ -605,7 +606,7 @@ function ApproveSignData(r){
 
 	t.Logf("address %v %v\n", addr.String(), addr.Original())
 
-	nvt := []*core.NameValueType{
+	nvt := []*apitypes.NameValueType{
 		{
 			Name:  "message",
 			Typ:   "text/plain",

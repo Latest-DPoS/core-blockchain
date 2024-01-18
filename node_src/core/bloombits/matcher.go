@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package bloombits
 
@@ -630,13 +631,16 @@ func (s *MatcherSession) Multiplex(batch int, wait time.Duration, mux chan chan 
 			request <- &Retrieval{Bit: bit, Sections: sections, Context: s.ctx}
 
 			result := <-request
+
+			// Deliver a result before s.Close() to avoid a deadlock
+			s.deliverSections(result.Bit, result.Sections, result.Bitsets)
+
 			if result.Error != nil {
 				s.errLock.Lock()
 				s.err = result.Error
 				s.errLock.Unlock()
 				s.Close()
 			}
-			s.deliverSections(result.Bit, result.Sections, result.Bitsets)
 		}
 	}
 }

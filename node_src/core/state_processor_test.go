@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package core
 
@@ -95,7 +96,7 @@ func TestStateProcessorErrors(t *testing.T) {
 			blockchain, _ = NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil, nil)
 		)
 		defer blockchain.Stop()
-		bigNumber := new(big.Int).SetBytes(common.FromHex("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"))
+		bigNumber := new(big.Int).SetBytes(common.MaxHash.Bytes())
 		tooBigNumber := new(big.Int).Set(bigNumber)
 		tooBigNumber.Add(tooBigNumber, common.Big1)
 		for i, tt := range []struct {

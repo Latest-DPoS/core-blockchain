@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package snap
 
@@ -67,7 +68,7 @@ func (r *hashRange) End() common.Hash {
 	// If the end overflows (non divisible range), return a shorter interval
 	next, overflow := new(uint256.Int).AddOverflow(r.current, r.step)
 	if overflow {
-		return common.HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+		return common.MaxHash
 	}
 	return next.SubUint64(next, 1).Bytes32()
 }

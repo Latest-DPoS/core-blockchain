@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package snapshot
 
@@ -258,6 +259,8 @@ func (dl *diffLayer) Root() common.Hash {
 
 // Parent returns the subsequent layer of a diff layer.
 func (dl *diffLayer) Parent() snapshot {
+	dl.lock.RLock()
+	defer dl.lock.RUnlock()
 	return dl.parent
 }
 

@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package event
 
@@ -120,7 +121,7 @@ func ResubscribeErr(backoffMax time.Duration, fn ResubscribeErrFunc) Subscriptio
 		backoffMax: backoffMax,
 		fn:         fn,
 		err:        make(chan error),
-		unsub:      make(chan struct{}),
+		unsub:      make(chan struct{}, 1),
 	}
 	go s.loop()
 	return s

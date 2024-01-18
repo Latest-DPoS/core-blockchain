@@ -13,12 +13,14 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 // Package gethclient provides an RPC client for geth-specific APIs.
 package gethclient
 
 import (
 	"context"
+	"encoding/json"
 	"math/big"
 	"runtime"
 	"runtime/debug"
@@ -80,22 +82,6 @@ type StorageResult struct {
 // The block number can be nil, in which case the value is taken from the latest known block.
 func (ec *Client) GetProof(ctx context.Context, account common.Address, keys []string, blockNumber *big.Int) (*AccountResult, error) {
 
-	type storageResult struct {
-		Key   string       `json:"key"`
-		Value *hexutil.Big `json:"value"`
-		Proof []string     `json:"proof"`
-	}
-
-	type accountResult struct {
-		Address      common.Address  `json:"address"`
-		AccountProof []string        `json:"accountProof"`
-		Balance      *hexutil.Big    `json:"balance"`
-		CodeHash     common.Hash     `json:"codeHash"`
-		Nonce        hexutil.Uint64  `json:"nonce"`
-		StorageHash  common.Hash     `json:"storageHash"`
-		StorageProof []storageResult `json:"storageProof"`
-	}
-
 	var res accountResult
 	err := ec.c.CallContext(ctx, &res, "eth_getProof", account, keys, toBlockNumArg(blockNumber))
 	// Turn hexutils back to normal datatypes
@@ -114,18 +100,20 @@ func (ec *Client) GetProof(ctx context.Context, account common.Address, keys []s
 		Nonce:        uint64(res.Nonce),
 		CodeHash:     res.CodeHash,
 		StorageHash:  res.StorageHash,
+		StorageProof: storageResults,  // Fix: Populate StorageProof field
 	}
 	return &result, err
 }
 
+
 // OverrideAccount specifies the state of an account to be overridden.
-type OverrideAccount struct {
-	Nonce     uint64                      `json:"nonce"`
-	Code      []byte                      `json:"code"`
-	Balance   *big.Int                    `json:"balance"`
-	State     map[common.Hash]common.Hash `json:"state"`
-	StateDiff map[common.Hash]common.Hash `json:"stateDiff"`
-}
+// type OverrideAccount struct {
+// 	Nonce     uint64                      `json:"nonce"`
+// 	Code      []byte                      `json:"code"`
+// 	Balance   *big.Int                    `json:"balance"`
+// 	State     map[common.Hash]common.Hash `json:"state"`
+// 	StateDiff map[common.Hash]common.Hash `json:"stateDiff"`
+// }
 
 // CallContract executes a message call transaction, which is directly executed in the VM
 // of the node, but never mined into the blockchain.
@@ -141,7 +129,7 @@ func (ec *Client) CallContract(ctx context.Context, msg ethereum.CallMsg, blockN
 	var hex hexutil.Bytes
 	err := ec.c.CallContext(
 		ctx, &hex, "eth_call", toCallArg(msg),
-		toBlockNumArg(blockNumber), toOverrideMap(overrides),
+		toBlockNumArg(blockNumber), overrides,
 	)
 	return hex, err
 }
@@ -210,26 +198,48 @@ func toCallArg(msg ethereum.CallMsg) interface{} {
 	return arg
 }
 
-func toOverrideMap(overrides *map[common.Address]OverrideAccount) interface{} {
-	if overrides == nil {
-		return nil
+// OverrideAccount specifies the state of an account to be overridden.
+type OverrideAccount struct {
+	// Nonce sets nonce of the account. Note: the nonce override will only
+	// be applied when it is set to a non-zero value.
+	Nonce uint64
+
+	// Code sets the contract code. The override will be applied
+	// when the code is non-nil, i.e. setting empty code is possible
+	// using an empty slice.
+	Code []byte
+
+	// Balance sets the account balance.
+	Balance *big.Int
+
+	// State sets the complete storage. The override will be applied
+	// when the given map is non-nil. Using an empty map wipes the
+	// entire contract storage during the call.
+	State map[common.Hash]common.Hash
+
+	// StateDiff allows overriding individual storage slots.
+	StateDiff map[common.Hash]common.Hash
+}
+
+func (a OverrideAccount) MarshalJSON() ([]byte, error) {
+	type acc struct {
+		Nonce     hexutil.Uint64              `json:"nonce,omitempty"`
+		Code      string                      `json:"code,omitempty"`
+		Balance   *hexutil.Big                `json:"balance,omitempty"`
+		State     interface{}                 `json:"state,omitempty"`
+		StateDiff map[common.Hash]common.Hash `json:"stateDiff,omitempty"`
 	}
-	type overrideAccount struct {
-		Nonce     hexutil.Uint64              `json:"nonce"`
-		Code      hexutil.Bytes               `json:"code"`
-		Balance   *hexutil.Big                `json:"balance"`
-		State     map[common.Hash]common.Hash `json:"state"`
-		StateDiff map[common.Hash]common.Hash `json:"stateDiff"`
+
+	output := acc{
+		Nonce:     hexutil.Uint64(a.Nonce),
+		Balance:   (*hexutil.Big)(a.Balance),
+		StateDiff: a.StateDiff,
 	}
-	result := make(map[common.Address]overrideAccount)
-	for addr, override := range *overrides {
-		result[addr] = overrideAccount{
-			Nonce:     hexutil.Uint64(override.Nonce),
-			Code:      override.Code,
-			Balance:   (*hexutil.Big)(override.Balance),
-			State:     override.State,
-			StateDiff: override.StateDiff,
-		}
+	if a.Code != nil {
+		output.Code = hexutil.Encode(a.Code)
 	}
-	return &result
+	if a.State != nil {
+		output.State = a.State
+	}
+	return json.Marshal(output)
 }

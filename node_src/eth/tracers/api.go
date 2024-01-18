@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package tracers
 
@@ -176,15 +177,28 @@ type TraceConfig struct {
 	Reexec  *uint64
 }
 
+type BlockOverrides struct {
+	Number      *hexutil.Big
+	Difficulty  *hexutil.Big
+	Time        *hexutil.Uint64
+	GasLimit    *hexutil.Uint64
+	Coinbase    *common.Address
+	Random      *common.Hash
+	BaseFee     *hexutil.Big
+	BlobBaseFee *hexutil.Big
+}
+
 // TraceCallConfig is the config for traceCall API. It holds one more
 // field to override the state for tracing.
 type TraceCallConfig struct {
-	*vm.LogConfig
-	Tracer         *string
-	Timeout        *string
-	Reexec         *uint64
-	StateOverrides *ethapi.StateOverride
+    *vm.LogConfig
+    Tracer         *string
+    Timeout        *string
+    Reexec         *uint64
+    StateOverrides *ethapi.StateOverride
+    BlockOverrides *BlockOverrides // Add this line
 }
+
 
 // StdTraceConfig holds extra parameters to standard-json trace functions.
 type StdTraceConfig struct {
@@ -616,8 +630,11 @@ func (api *API) traceBlock(ctx context.Context, block *types.Block, config *Trac
 	if threads > len(txs) {
 		threads = len(txs)
 	}
-	blockCtx := core.NewEVMBlockContext(block.Header(), api.chainContext(ctx), nil)
+
+
+	
 	if api.isPoSA {
+		blockCtx := core.NewEVMBlockContext(block.Header(), api.chainContext(ctx), nil)
 		_ = api.posa.PreHandle(api.backend.ChainHeaderReader(), header, statedb)
 		blockCtx.ExtraValidator = api.posa.CreateEvmExtraValidator(header, statedb)
 	}
@@ -625,6 +642,7 @@ func (api *API) traceBlock(ctx context.Context, block *types.Block, config *Trac
 	for th := 0; th < threads; th++ {
 		pend.Add(1)
 		go func() {
+			blockCtx := core.NewEVMBlockContext(block.Header(), api.chainContext(ctx), nil)
 			defer pend.Done()
 			// Fetch and execute the next transaction trace tasks
 			for task := range jobs {
@@ -652,6 +670,7 @@ func (api *API) traceBlock(ctx context.Context, block *types.Block, config *Trac
 	}
 	// Feed the transactions into the tracers and return
 	var failed error
+	blockCtx := core.NewEVMBlockContext(block.Header(), api.chainContext(ctx), nil)
 	for i, tx := range txs {
 		var isSysTx bool
 		if api.isPoSA {

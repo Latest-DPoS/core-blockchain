@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package les
 
@@ -55,7 +56,7 @@ func testULCAnnounceThreshold(t *testing.T, protocol int) {
 			ids       []string
 		)
 		for i := 0; i < len(testcase.height); i++ {
-			s, n, teardown := newTestServerPeer(t, 0, protocol)
+			s, n, teardown := newTestServerPeer(t, 0, protocol, nil)
 
 			servers = append(servers, s)
 			nodes = append(nodes, n)
@@ -132,10 +133,11 @@ func connect(server *serverHandler, serverId enode.ID, client *clientHandler, pr
 }
 
 // newTestServerPeer creates server peer.
-func newTestServerPeer(t *testing.T, blocks int, protocol int) (*testServer, *enode.Node, func()) {
+func newTestServerPeer(t *testing.T, blocks int, protocol int, indexFn indexerCallback) (*testServer, *enode.Node, func()) {
 	netconfig := testnetConfig{
 		blocks:    blocks,
 		protocol:  protocol,
+		indexFn:   indexFn,
 		nopruning: true,
 	}
 	s, _, teardown := newClientServerEnv(t, netconfig)

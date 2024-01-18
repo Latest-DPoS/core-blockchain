@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package rpc
 
@@ -158,6 +159,9 @@ func (c *Client) sendBatchHTTP(ctx context.Context, op *requestOp, msgs []*jsonr
 	if err := json.NewDecoder(respBody).Decode(&respmsgs); err != nil {
 		return err
 	}
+	if len(respmsgs) != len(msgs) {
+		return fmt.Errorf("batch has %d requests but response has %d: %w", len(msgs), len(respmsgs), ErrBadResult)
+	}
 	for i := 0; i < len(respmsgs); i++ {
 		op.resp <- &respmsgs[i]
 	}
@@ -174,6 +178,7 @@ func (hc *httpConn) doRequest(ctx context.Context, msg interface{}) (io.ReadClos
 		return nil, err
 	}
 	req.ContentLength = int64(len(body))
+	req.GetBody = func() (io.ReadCloser, error) { return ioutil.NopCloser(bytes.NewReader(body)), nil }
 
 	// set headers
 	hc.mu.Lock()

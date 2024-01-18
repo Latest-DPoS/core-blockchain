@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package eth
 
@@ -175,7 +176,7 @@ func (api *PrivateAdminAPI) ExportChain(file string, first *uint64, last *uint64
 		return false, errors.New("location would overwrite an existing file")
 	}
 	// Make sure we can create the file to export into
-	out, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	out, err := os.OpenFile(file, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return false, err
 	}

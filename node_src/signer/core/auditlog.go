@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package core
 
@@ -89,7 +90,7 @@ func (l *AuditLogger) SignGnosisSafeTx(ctx context.Context, addr common.Mixedcas
 	return res, e
 }
 
-func (l *AuditLogger) SignTypedData(ctx context.Context, addr common.MixedcaseAddress, data TypedData) (hexutil.Bytes, error) {
+func (l *AuditLogger) SignTypedData(ctx context.Context, addr common.MixedcaseAddress, data apitypes.TypedData) (hexutil.Bytes, error) {
 	l.log.Info("SignTypedData", "type", "request", "metadata", MetadataFromContext(ctx).String(),
 		"addr", addr.String(), "data", data)
 	b, e := l.api.SignTypedData(ctx, addr, data)

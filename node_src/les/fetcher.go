@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package les
 
@@ -441,6 +442,14 @@ func (f *lightFetcher) mainloop() {
 			if ulc {
 				head := f.chain.CurrentHeader()
 				ancestor := rawdb.FindCommonAncestor(f.chaindb, origin, head)
+
+				// Recap the ancestor with genesis header in case the ancestor
+				// is not found. It can happen the original head is before the
+				// checkpoint while the synced headers are after it. In this
+				// case there is no ancestor between them.
+				if ancestor == nil {
+					ancestor = f.chain.Genesis().Header()
+				}
 				var untrusted []common.Hash
 				for head.Number.Cmp(ancestor.Number) > 0 {
 					hash, number := head.Hash(), head.Number.Uint64()
@@ -449,6 +458,9 @@ func (f *lightFetcher) mainloop() {
 					}
 					untrusted = append(untrusted, hash)
 					head = f.chain.GetHeader(head.ParentHash, number-1)
+					if head == nil {
+						break // all the synced headers will be dropped
+					}
 				}
 				if len(untrusted) > 0 {
 					for i, j := 0, len(untrusted)-1; i < j; i, j = i+1, j-1 {
@@ -514,7 +526,7 @@ func (f *lightFetcher) requestHeaderByHash(peerid enode.ID) func(common.Hash) er
 	}
 }
 
-// requestResync invokes synchronisation callback to start syncing.
+//  startSync invokes synchronisation callback to start syncing.
 func (f *lightFetcher) startSync(id enode.ID) {
 	defer func(header *types.Header) {
 		f.syncDone <- header

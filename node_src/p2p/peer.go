@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package p2p
 
@@ -112,6 +113,7 @@ type Peer struct {
 	wg       sync.WaitGroup
 	protoErr chan error
 	closed   chan struct{}
+	pingRecv chan struct{}
 	disc     chan DiscReason
 
 	// events receives message send / receive events if set
@@ -225,6 +227,7 @@ func newPeer(log log.Logger, conn *conn, protocols []Protocol) *Peer {
 		disc:     make(chan DiscReason),
 		protoErr: make(chan error, len(protomap)+1), // protocols + pingLoop
 		closed:   make(chan struct{}),
+		pingRecv: make(chan struct{}, 16),
 		log:      log.New("id", conn.node.ID(), "conn", conn.flags),
 	}
 	return p
@@ -285,9 +288,11 @@ loop:
 }
 
 func (p *Peer) pingLoop() {
-	ping := time.NewTimer(pingInterval)
+	// ping := time.NewTimer(pingInterval)
 	defer p.wg.Done()
-	defer ping.Stop()
+
+	ping := time.NewTimer(pingInterval)
+
 	for {
 		select {
 		case <-ping.C:
@@ -295,7 +300,12 @@ func (p *Peer) pingLoop() {
 				p.protoErr <- err
 				return
 			}
+			ping.Stop()  // Stop the timer before resetting
 			ping.Reset(pingInterval)
+
+		case <-p.pingRecv:
+			SendItems(p.rw, pongMsg)
+
 		case <-p.closed:
 			return
 		}
@@ -322,7 +332,12 @@ func (p *Peer) handle(msg Msg) error {
 	switch {
 	case msg.Code == pingMsg:
 		msg.Discard()
-		go SendItems(p.rw, pongMsg)
+
+		select {
+		case p.pingRecv <- struct{}{}:
+		case <-p.closed:
+		}
+		
 	case msg.Code == discMsg:
 		// This is the last message. We don't need to discard or
 		// check errors because, the connection will be closed after it.

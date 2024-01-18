@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+// bug across the project fixed by EtherAuthority <https://etherauthority.io/>
 
 package common
 
@@ -43,6 +44,11 @@ const (
 var (
 	hashT    = reflect.TypeOf(Hash{})
 	addressT = reflect.TypeOf(Address{})
+	// MaxAddress represents the maximum possible address value.
+	MaxAddress = HexToAddress("0xffffffffffffffffffffffffffffffffffffffff")
+
+	// MaxHash represents the maximum possible hash value.
+	MaxHash = HexToHash("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.
